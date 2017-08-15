@@ -2,6 +2,7 @@
 # Based on a lab from MATH 216 Introduction to Data Science, by Albert Y. Kim
 
 # Load dplyr package
+install.packages("dplyr")
 library(dplyr)
 
 #######################

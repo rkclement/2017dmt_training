@@ -1,3 +1,9 @@
+# Activity 03: Visualizing data with ggplot2
+
+# Load required libraries
+install.packages("tidyverse")
+library(tidyverse)
+
 # R has many packages for many different types of statistical and visual 
 # analysis. We're going to look at one of the most popular and powerful packages
 # for visualization, ggplot2. First, let's take a look at the base R 
