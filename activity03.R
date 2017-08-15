@@ -1,0 +1,268 @@
+# R has many packages for many different types of statistical and visual 
+# analysis. We're going to look at one of the most popular and powerful packages
+# for visualization, ggplot2. First, let's take a look at the base R 
+# visualization tools. We're going to use two datasets from R today, one called 
+# iris, [https://en.wikipedia.org/wiki/Iris_flower_data_set], and one called 
+# diamonds [http://ggplot2.tidyverse.org/reference/diamonds.html]. Let's take a 
+# look at iris first. 
+
+str(iris)
+head(iris)
+
+# We can use base R plot() function to make a simple scatterplot.
+
+plot(iris$Sepal.Length, iris$Petal.Length)
+
+# We can add colors based on the species variable, size the points based on 
+# a formula, and change the symbology.
+
+plot(iris$Sepal.Length, iris$Petal.Length, 
+     col = iris$Species, 
+     pch = 19,
+     cex = iris$Sepal.Width/median(iris$Sepal.Width))
+
+# However, we're missing a legend! In base R plotting, you need to add legends 
+# and proper labels yourself.
+
+plot(iris$Sepal.Length, iris$Petal.Length, 
+     col = iris$Species, 
+     pch = 19,
+     xlab = "Sepal Length",
+     ylab = "Petal Length", 
+     main = "Iris Species Sepal Length vs Petal Length")
+legend(7.5, 2.5, 
+       c("Setosa", "Virginica", "Versicolor"), 
+       pch = 19, 
+       col = c("black", "red", "green"))
+
+# You can also add other annotations like median lines to a basic plot.
+
+abline(v = median(iris$Sepal.Length), h = median(iris$Petal.Length) )
+text(4.5, median(iris$Petal.Length) + 0.15, 
+     paste("Median Petal Length =", median(iris$Petal.Length)),
+     cex = 0.7)
+text(median(iris$Sepal.Length) + 0.35, 2.5, 
+     paste("Median Sepal Length =", median(iris$Sepal.Length)),
+     cex = 0.7)
+
+
+# BUT THERE IS AN EASIER WAY! Using the ggplot2 package, part of the 
+# "tidyverse," we can more easily make graphs that look great. ggplot2 handles
+# a lot of the decisions, such as making labels, for you! It also makes objects, 
+# not static plots, so we can manipulate them rather than just building them up 
+# by drawing over the already made plots.
+
+# For example, in base plot, if we go back to a basic scatterplot of width vs
+# length of sepals:
+
+plot(iris$Sepal.Length, iris$Sepal.Width)
+
+# and then decide we want to add the petal data as well, we can do that like 
+# this:
+
+plot(iris$Sepal.Length, iris$Sepal.Width, pch = 19)
+points(iris$Petal.Length, iris$Petal.Width, pch = 19, col = "red")
+
+# What's wrong with this? The new points (the red ones) were simply added onto 
+# the existing plot. So, in addition to having no legend, our plot is cut off at 
+# the bottom.
+
+# This isn't a problem with ggplot, where the graph is an "object" that can be 
+# changed and manipulated. Let's make our first ggplot graph.
+
+ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width)) + geom_point()
+
+ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width)) + geom_point() + 
+  geom_point(aes(x = Petal.Length, y = Petal.Width), col = "red")
+
+# As you can see, our graph size changes. Still no legend though! But that's 
+# because, even though the method above makes a graph, it's NOT THE RIGHT WAY
+# TO DO IT. First we need to talk about the Grammar of Graphics, and tidy data.
+
+# The Grammar of Graphics talks about 7 layers visualizations use: (1) Data, 
+# (2) Aesthetic Mappings, (3) Geometric Objects, (4) Scales, (5) Faceting, 
+# (6) Statistical Transformations, and (7) Coordinate Systems. For any ggplot 
+# visualization, you MUST specify the first 3 of these. If you don't specify
+# the others, ggplot will take care of them for you with defaults. 
+
+# Start with the data, and aesthetic mappings.
+
+g <- ggplot(data = iris, aes(x = Sepal.Length, y = Sepal.Width, col = Species))
+
+# Add a geometric object
+
+g2 <- g + geom_point()
+
+# Add facets, if you want
+
+g2 + facet_wrap(~Species)
+
+# Add a statistical transformation
+
+g + geom_point() + stat_smooth()
+
+g + geom_point() + stat_smooth(method = "lm")
+
+g + geom_point() + stat_quantile()
+
+# And so on. So how do we make the graph from above of Sepal and Petal Length
+# vs Sepal and Petal Width properly?
+
+# If you look again at the head(iris), you'll see that the data has 4 columns 
+# which actually contain three values each. For example, Sepal Length stores
+# not only the value (the length), but also the fact that the measurement is
+# length, and the flower part is the sepal. Transforming the data into tidy
+# data, with one variable per column, as below, can give us access to ALL of 
+# our data in order to make the plots we're trying to make. Transforming iris 
+# into a different form of wide data, also as below, can also give us access to 
+# plot something other than we originally could.
+
+#############################
+#### CLEANING IRIS DATA #####
+#############################
+
+# Making iris_tidy by using tidyr functions gather() and separate(). Gathers
+# all non-categorial headers into one column, key, and then associates them 
+# with their previous values, which it puts into the Value column. You can just
+# run this code.
+
+iris_tidy <- iris %>%
+  gather(key, Value, - Species) %>%
+  separate(key, c("Part", "Measure"), "\\.") 
+
+# Making iris_wide uses the same tidyr functions as above, plus the function 
+# spread(). First, so that we can keep track of which measures belong to which 
+# flower, we need to add a unique identifier in a column called Flower.
+
+iris$Flower <- 1:nrow(iris)
+
+iris_wide <- iris %>%
+  gather(key, value, -Species, -Flower) %>%
+  separate(key, c("Part", "Measure"), "\\.") %>%
+  spread(Measure, value)
+
+head(iris_tidy)
+head(iris_wide)
+
+# Now we can use these differently formatted versions of the iris data to make 
+# better graphs using ggplot. This highlights two things: first, ggplot tries
+# to be very unrestrictive in what you are allowed to do with it - if it uses 
+# the correct syntax, ggplot will execute it and make something. Also, data 
+# manipulation is very necessary when working with data visualization. 
+# Sometimes you need to manipulate your data in order to make the visualization 
+# you have in mind.
+
+
+# Plot length vs width, colored by part (sepal or petal) using iris_wide.
+
+ggplot(iris_wide, aes(x = Length, y = Width, col = Part)) + geom_point()
+
+ggplot(iris_wide, aes(x = Length, y = Width, col = Part, shape = Species)) + 
+  geom_point()
+
+# It doesn't make much sense to use shapes to differentiate species, as this is 
+# hard to visually interpret.Plot length vs width, colored by part (sepal or 
+# petal) using iris_wide, but this time make a separate graph for each species
+
+ggplot(iris_wide, aes(x = Length, y = Width, col = Part)) + geom_point() +
+  facet_wrap(~Species, nrow = 2)
+
+# Use iris_tidy to make a point graph of the measurements of each different part 
+# colored by whether they are length or width, and faceted by species. Then make
+# the same graph as boxplots.
+
+ggplot(iris_tidy, aes(x = Part, y = Value, col = Measure)) + geom_point() + 
+  facet_grid(~Species)
+
+ggplot(iris_tidy, aes(x = Part, y = Value, col = Measure)) + geom_boxplot() + 
+  facet_grid(~Species)
+
+#####################################
+# More ggplot functionality and fun #
+#####################################
+
+str(diamonds)
+head(diamonds)
+
+# Geometries (such as a bar) that rely on statistical transformations (e.g. a 
+# "count") of occurences as a below, can be substituted with the same stat 
+# transformation.
+
+ggplot(diamonds, aes(cut)) + geom_bar()
+
+ggplot(diamonds, aes(cut)) + stat_count()
+
+# You can also use "identity" as a stat transformation if the "count" is present
+# in your data itself.
+
+cut_freq <- count(diamonds, cut)
+cut_freq
+
+ggplot(cut_freq, aes(cut, n)) + geom_bar(stat = "identity")
+
+# Different positions for bars in charts
+
+ggplot(diamonds, aes(cut, fill = clarity)) + geom_bar()
+
+ggplot(diamonds, aes(cut, fill = clarity)) + geom_bar(position = "dodge")
+
+ggplot(diamonds, aes(cut, fill = clarity)) + geom_bar(position = "identity")
+
+ggplot(diamonds, aes(cut, fill = clarity)) + 
+  geom_bar(position = "identity", alpha = 0.2)
+
+ggplot(diamonds, aes(cut, fill = clarity)) + geom_bar(position = "fill")
+
+# Different coordinate systems
+
+ggplot(diamonds, aes(cut, fill = cut)) + geom_bar() + coord_polar()
+
+ggplot(diamonds, aes(cut, fill = cut)) + geom_bar() + coord_flip()
+
+ggplot(diamonds, aes(cut, fill = clarity)) + geom_bar(position = "dodge") + 
+  coord_polar()
+
+# Plotting lines fitted to the data
+
+ggplot(diamonds, aes(carat, price)) + geom_point()
+
+ggplot(diamonds, aes(carat, price)) + geom_point(alpha = 0.2) + geom_smooth()
+
+
+ggplot(diamonds, aes(carat, price)) + geom_point(alpha = 0.2) + 
+  geom_smooth(method = "lm")
+
+ggplot(diamonds, aes(carat, price)) + geom_point(alpha = 0.2) + 
+  geom_smooth(aes(color = clarity))
+
+ggplot(diamonds, aes(carat, price)) + 
+  geom_point(aes(color = clarity),alpha = 0.2) + 
+  geom_smooth(aes(color = clarity))
+
+ggplot(diamonds, aes(carat, price)) + geom_smooth(aes(color = clarity))
+
+
+ggplot(diamonds, aes(carat, price)) + geom_point(alpha = 0.2) + 
+  geom_smooth(aes(color = clarity), se = FALSE)
+
+# Matrix faceting
+
+ggplot(diamonds, aes(carat, price)) + geom_point(alpha = 0.2) + 
+  facet_grid(cut ~ clarity)
+
+############
+# EXERCISE #
+############
+
+# Q1.  Create a plot that shows once again the relationship between carat,
+# but now let the size of the points reflect the table of the diamond and have
+# separate plots by clarity
+
+# Q2. A friend wants to know if cars in 1973-1974 that have bigger
+# cylinders (the variable displacement in cu. in.) have better mileage (in mpg).
+# Two important factors they want to consider are the # of cylinders and whether
+# the car has an automatic or manual transmission.  Answer your friend's
+# question using a visualization. As added bonus, use google to add detailed
+# x-labels and y-labels
+data(mtcars)
+?mtcars
